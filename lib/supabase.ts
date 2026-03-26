@@ -1,11 +1,18 @@
 import { createClient } from '@supabase/supabase-js'
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+// Lazy initialization — avoids calling createClient at module load time,
+// which would throw during Next.js build when env vars aren't present.
 
-// Public client for server component reads
-export const supabase = createClient(url, anonKey)
+export function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}
 
-// Admin client for sync writes (service role bypasses RLS)
-export const supabaseAdmin = createClient(url, serviceKey)
+export function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}

@@ -1,6 +1,6 @@
 import { RefreshCw } from 'lucide-react'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
+import { getSupabase } from '@/lib/supabase'
 import { PROJECTS } from '@/lib/projects'
 import { KPIBar } from '@/components/dashboard/KPIBar'
 import { ProjectCard } from '@/components/dashboard/ProjectCard'
@@ -9,8 +9,8 @@ import { LOCChart } from '@/components/dashboard/LOCChart'
 import { PortfolioSummary } from '@/components/dashboard/PortfolioSummary'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 
-// Revalidate every hour; cron job handles nightly deep sync
-export const revalidate = 3600
+// Force dynamic rendering — Supabase reads happen at request time
+export const dynamic = 'force-dynamic'
 
 // ─── helpers ───────────────────────────────────────────────────────────────
 
@@ -51,6 +51,7 @@ function buildCommitsByDay(
 export default async function DashboardPage() {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString()
 
+  const db = getSupabase()
   const [
     { data: commits },
     { data: deployments },
@@ -59,27 +60,12 @@ export default async function DashboardPage() {
     { data: portfolioRows },
     { data: syncLog },
   ] = await Promise.all([
-    supabase
-      .from('commits')
-      .select('project_id, committed_at')
-      .gte('committed_at', thirtyDaysAgo),
-    supabase
-      .from('deployments')
-      .select('project_id, state, url, deployed_at')
-      .order('deployed_at', { ascending: false }),
-    supabase.from('language_stats').select('project_id, bytes'),
-    supabase.from('ai_summaries').select('*'),
-    supabase
-      .from('portfolio_summaries')
-      .select('summary, generated_at')
-      .order('generated_at', { ascending: false })
-      .limit(1),
-    supabase
-      .from('sync_logs')
-      .select('completed_at, status')
-      .eq('status', 'success')
-      .order('completed_at', { ascending: false })
-      .limit(1),
+    db.from('commits').select('project_id, committed_at').gte('committed_at', thirtyDaysAgo),
+    db.from('deployments').select('project_id, state, url, deployed_at').order('deployed_at', { ascending: false }),
+    db.from('language_stats').select('project_id, bytes'),
+    db.from('ai_summaries').select('*'),
+    db.from('portfolio_summaries').select('summary, generated_at').order('generated_at', { ascending: false }).limit(1),
+    db.from('sync_logs').select('completed_at, status').eq('status', 'success').order('completed_at', { ascending: false }).limit(1),
   ])
 
   const { byProject, chartData } = buildCommitsByDay(commits ?? [])

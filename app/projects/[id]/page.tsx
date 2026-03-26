@@ -1,18 +1,15 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, ExternalLink, Sparkles } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { getSupabase } from '@/lib/supabase'
 import { PROJECTS } from '@/lib/projects'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { CommitChart } from '@/components/dashboard/CommitChart'
 import { LOCChart } from '@/components/dashboard/LOCChart'
 
-export const revalidate = 3600
-
-export async function generateStaticParams() {
-  return PROJECTS.map((p) => ({ id: p.id }))
-}
+// Force dynamic rendering — Supabase reads happen at request time
+export const dynamic = 'force-dynamic'
 
 function deploymentBadge(state: string) {
   if (state === 'READY') return 'success' as const
@@ -41,34 +38,17 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString()
 
+  const db = getSupabase()
   const [
     { data: commits },
     { data: deployments },
     { data: languages },
     { data: summary },
   ] = await Promise.all([
-    supabase
-      .from('commits')
-      .select('sha, message, author_name, committed_at')
-      .eq('project_id', id)
-      .gte('committed_at', thirtyDaysAgo)
-      .order('committed_at', { ascending: false }),
-    supabase
-      .from('deployments')
-      .select('deployment_id, url, state, deployed_at')
-      .eq('project_id', id)
-      .order('deployed_at', { ascending: false })
-      .limit(10),
-    supabase
-      .from('language_stats')
-      .select('language, bytes')
-      .eq('project_id', id)
-      .order('bytes', { ascending: false }),
-    supabase
-      .from('ai_summaries')
-      .select('*')
-      .eq('project_id', id)
-      .maybeSingle(),
+    db.from('commits').select('sha, message, author_name, committed_at').eq('project_id', id).gte('committed_at', thirtyDaysAgo).order('committed_at', { ascending: false }),
+    db.from('deployments').select('deployment_id, url, state, deployed_at').eq('project_id', id).order('deployed_at', { ascending: false }).limit(10),
+    db.from('language_stats').select('language, bytes').eq('project_id', id).order('bytes', { ascending: false }),
+    db.from('ai_summaries').select('*').eq('project_id', id).maybeSingle(),
   ])
 
   const dailyData = buildDailyData(commits ?? [])

@@ -2,7 +2,7 @@ import { PROJECTS } from './projects'
 import { getCommits, getLanguages } from './github'
 import { getDeployments } from './vercel-client'
 import { generateProjectSummary, generatePortfolioSummary } from './ai'
-import { supabaseAdmin } from './supabase'
+import { getSupabaseAdmin } from './supabase'
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
@@ -23,7 +23,7 @@ export async function syncAll() {
 }
 
 async function seedProjects() {
-  const { data: existing } = await supabaseAdmin.from('projects').select('id')
+  const { data: existing } = await getSupabaseAdmin().from('projects').select('id')
   const ids = new Set((existing ?? []).map((p: any) => p.id))
   const toInsert = PROJECTS.filter((p) => !ids.has(p.id)).map((p) => ({
     id: p.id,
@@ -36,7 +36,7 @@ async function seedProjects() {
     color: p.color,
   }))
   if (toInsert.length > 0) {
-    await supabaseAdmin.from('projects').insert(toInsert)
+    await getSupabaseAdmin().from('projects').insert(toInsert)
   }
 }
 
@@ -53,7 +53,7 @@ export async function syncProject(projectId: string) {
 
   // Upsert commits
   if (commits.length > 0) {
-    await supabaseAdmin.from('commits').upsert(
+    await getSupabaseAdmin().from('commits').upsert(
       commits.map((c) => ({
         id: `${project.id}-${c.sha}`,
         project_id: project.id,
@@ -68,7 +68,7 @@ export async function syncProject(projectId: string) {
 
   // Upsert deployments
   if (deployments.length > 0) {
-    await supabaseAdmin.from('deployments').upsert(
+    await getSupabaseAdmin().from('deployments').upsert(
       deployments.map((d) => ({
         id: `${project.id}-${d.id}`,
         project_id: project.id,
@@ -89,13 +89,13 @@ export async function syncProject(projectId: string) {
     synced_at: new Date().toISOString(),
   }))
   if (langRows.length > 0) {
-    await supabaseAdmin
+    await getSupabaseAdmin()
       .from('language_stats')
       .upsert(langRows, { onConflict: 'project_id,language' })
   }
 
   // Refresh AI summary if expired
-  const { data: existing } = await supabaseAdmin
+  const { data: existing } = await getSupabaseAdmin()
     .from('ai_summaries')
     .select('expires_at')
     .eq('project_id', project.id)
@@ -113,7 +113,7 @@ export async function syncProject(projectId: string) {
       lastDeploymentState: deployments[0]?.state,
     })
     if (summary) {
-      await supabaseAdmin.from('ai_summaries').upsert(
+      await getSupabaseAdmin().from('ai_summaries').upsert(
         {
           project_id: project.id,
           ...summary,
@@ -127,7 +127,7 @@ export async function syncProject(projectId: string) {
 }
 
 async function refreshPortfolioSummary() {
-  const { data: latest } = await supabaseAdmin
+  const { data: latest } = await getSupabaseAdmin()
     .from('portfolio_summaries')
     .select('expires_at')
     .order('generated_at', { ascending: false })
@@ -136,11 +136,11 @@ async function refreshPortfolioSummary() {
 
   if (latest && new Date(latest.expires_at) > new Date()) return
 
-  const { data: summaries } = await supabaseAdmin
+  const { data: summaries } = await getSupabaseAdmin()
     .from('ai_summaries')
     .select('project_id, goal, status, maturity')
 
-  const { data: commitRows } = await supabaseAdmin
+  const { data: commitRows } = await getSupabaseAdmin()
     .from('commits')
     .select('project_id')
     .gte('committed_at', new Date(Date.now() - THIRTY_DAYS_MS).toISOString())
@@ -166,7 +166,7 @@ async function refreshPortfolioSummary() {
   )
 
   if (portfolioSummary) {
-    await supabaseAdmin.from('portfolio_summaries').insert({
+    await getSupabaseAdmin().from('portfolio_summaries').insert({
       summary: portfolioSummary,
       expires_at: new Date(Date.now() + SEVEN_DAYS_MS).toISOString(),
     })
@@ -174,7 +174,7 @@ async function refreshPortfolioSummary() {
 }
 
 async function startLog(): Promise<string> {
-  const { data } = await supabaseAdmin
+  const { data } = await getSupabaseAdmin()
     .from('sync_logs')
     .insert({ status: 'running' })
     .select('id')
@@ -188,7 +188,7 @@ async function finishLog(
   projects_synced: number,
   error?: string
 ) {
-  await supabaseAdmin
+  await getSupabaseAdmin()
     .from('sync_logs')
     .update({ status, completed_at: new Date().toISOString(), projects_synced, error })
     .eq('id', id)
