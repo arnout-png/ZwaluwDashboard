@@ -61,16 +61,6 @@ export const PROJECTS: Project[] = [
     color: '#ef4444',
   },
   {
-    id: 'brevi',
-    name: 'Brevi',
-    description: 'Persoonlijk project',
-    githubOwner: 'arnout-png',
-    githubRepo: 'Brevi',
-    vercelProjectId: null,
-    techStack: [],
-    color: '#6366f1',
-  },
-  {
     id: 'zwaluw-dashboard',
     name: 'ZwaluwDashboard',
     description: 'Portfolio analytics dashboard voor alle Zwaluw-projecten',
