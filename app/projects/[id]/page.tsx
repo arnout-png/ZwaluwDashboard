@@ -1,12 +1,14 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ExternalLink, Sparkles } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Sparkles, Gauge } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase'
 import { PROJECTS } from '@/lib/projects'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { CommitChart } from '@/components/dashboard/CommitChart'
 import { LOCChart } from '@/components/dashboard/LOCChart'
+import { calculateQualityScore } from '@/lib/quality-score'
+import { QualityGauge, QualityBreakdown } from '@/components/dashboard/QualityGauge'
 
 // Force dynamic rendering — Supabase reads happen at request time
 export const dynamic = 'force-dynamic'
@@ -53,6 +55,19 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   const dailyData = buildDailyData(commits ?? [])
   const totalBytes = (languages ?? []).reduce((s: number, l: any) => s + l.bytes, 0)
+
+  // Quality score
+  const qualityResult = calculateQualityScore({
+    commitCount30d: (commits ?? []).length,
+    deployments: (deployments ?? []).map((d: any) => ({ state: d.state })),
+    totalBytes,
+    languages: (languages ?? []).map((l: any) => ({ language: l.language, bytes: l.bytes })),
+    hasVercel: !!project.vercelProjectId,
+    hasSupabase: !!project.supabaseRef,
+    techStackCount: project.techStack.length,
+    aiMaturity: summary?.maturity ?? null,
+    aiStatus: summary?.status ?? null,
+  })
 
   return (
     <main className="min-h-screen bg-zinc-950 px-4 py-8 md:px-8">
@@ -102,6 +117,20 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             <p className="text-xs text-zinc-500">Gesch. regels code</p>
           </div>
         </div>
+
+        {/* Quality Score */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Gauge className="h-4 w-4 text-cyan-400" />
+              <CardTitle>Kwaliteitsscore</CardTitle>
+            </div>
+          </CardHeader>
+          <div className="grid gap-6 md:grid-cols-[auto_1fr] items-start px-6 pb-6">
+            <QualityGauge result={qualityResult} />
+            <QualityBreakdown dimensions={qualityResult.dimensions} color={project.color} />
+          </div>
+        </Card>
 
         {/* Commit chart */}
         <Card>

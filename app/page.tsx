@@ -7,6 +7,7 @@ import { LOCChart } from '@/components/dashboard/LOCChart'
 import { PortfolioSummary } from '@/components/dashboard/PortfolioSummary'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { SyncButton } from '@/components/dashboard/SyncButton'
+import { calculateQualityScore, type QualityResult } from '@/lib/quality-score'
 
 // Force dynamic rendering — Supabase reads happen at request time
 export const dynamic = 'force-dynamic'
@@ -61,7 +62,7 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     db.from('commits').select('project_id, committed_at').gte('committed_at', thirtyDaysAgo),
     db.from('deployments').select('project_id, state, url, deployed_at').order('deployed_at', { ascending: false }),
-    db.from('language_stats').select('project_id, bytes'),
+    db.from('language_stats').select('project_id, language, bytes'),
     db.from('ai_summaries').select('*'),
     db.from('portfolio_summaries').select('summary, generated_at').order('generated_at', { ascending: false }).limit(1),
     db.from('sync_logs').select('completed_at, status').eq('status', 'success').order('completed_at', { ascending: false }).limit(1),
@@ -100,6 +101,27 @@ export default async function DashboardPage() {
   const maturities = Object.values(summaryMap).map((s) => s.maturity ?? 1)
   const avgMaturity =
     maturities.length > 0 ? maturities.reduce((a, b) => a + b, 0) / maturities.length : 0
+
+  // Quality scores per project
+  const qualityScores: Record<string, QualityResult> = {}
+  for (const p of PROJECTS) {
+    const projectCommits = (commits ?? []).filter((c) => c.project_id === p.id)
+    const projectDeploys = (deployments ?? []).filter((d) => d.project_id === p.id)
+    const projectLangs = (languages ?? []).filter((l: any) => l.project_id === p.id)
+    const projectBytes = projectLangs.reduce((s: number, l: any) => s + (l.bytes ?? 0), 0)
+
+    qualityScores[p.id] = calculateQualityScore({
+      commitCount30d: projectCommits.length,
+      deployments: projectDeploys.map((d) => ({ state: d.state })),
+      totalBytes: projectBytes,
+      languages: projectLangs.map((l: any) => ({ language: l.language ?? '', bytes: l.bytes ?? 0 })),
+      hasVercel: !!p.vercelProjectId,
+      hasSupabase: !!p.supabaseRef,
+      techStackCount: p.techStack.length,
+      aiMaturity: summaryMap[p.id]?.maturity ?? null,
+      aiStatus: summaryMap[p.id]?.status ?? null,
+    })
+  }
 
   const portfolioSummary = portfolioRows?.[0] ?? null
   const lastSync = syncLog?.[0]?.completed_at ?? null
@@ -153,6 +175,7 @@ export default async function DashboardPage() {
                 commitsByDay={byProject[project.id] ?? []}
                 latestDeployment={latestDeploy[project.id] ?? null}
                 summary={summaryMap[project.id] ?? null}
+                qualityScore={qualityScores[project.id] ?? null}
               />
             ))}
           </div>

@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Sparkline } from './Sparkline'
+import { QualityBadge } from './QualityGauge'
+import type { QualityResult } from '@/lib/quality-score'
 
 function deploymentVariant(state: string | null) {
   if (!state) return 'secondary' as const
@@ -36,6 +38,7 @@ export function ProjectCard({
   commitsByDay,
   latestDeployment,
   summary,
+  qualityScore,
 }: {
   project: {
     id: string
@@ -53,6 +56,7 @@ export function ProjectCard({
     maturity: number
     key_insight: string
   } | null
+  qualityScore: QualityResult | null
 }) {
   const totalCommits = commitsByDay.reduce((s, d) => s + d.count, 0)
 
@@ -97,7 +101,10 @@ export function ProjectCard({
       {/* Stats row */}
       <div className="mb-3 flex items-center justify-between text-xs text-zinc-500">
         <span>{totalCommits} commits (30d)</span>
-        {summary && <MaturityDots score={summary.maturity} />}
+        <div className="flex items-center gap-3">
+          {qualityScore && <QualityBadge result={qualityScore} />}
+          {summary && <MaturityDots score={summary.maturity} />}
+        </div>
       </div>
 
       {/* Tech stack */}
