@@ -8,11 +8,21 @@ import {
   Plug,
   CircleDollarSign,
   FolderKanban,
+  LogOut,
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { NavItem } from './NavItem'
 import { PROJECTS } from '@/lib/projects'
 
 export function Sidebar() {
+  const router = useRouter()
+
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    router.push('/login')
+    router.refresh()
+  }
+
   return (
     <aside className="flex h-screen w-52 shrink-0 flex-col border-r border-zinc-800 bg-zinc-950 overflow-y-auto">
       {/* Logo */}
@@ -55,8 +65,15 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-zinc-800">
+      <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-800">
         <p className="text-[10px] text-zinc-600">Zwaluw Comfortsanitair</p>
+        <button
+          onClick={handleLogout}
+          title="Uitloggen"
+          className="text-zinc-600 hover:text-zinc-400 transition-colors"
+        >
+          <LogOut className="h-3.5 w-3.5" />
+        </button>
       </div>
     </aside>
   )
