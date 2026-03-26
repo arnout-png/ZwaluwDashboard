@@ -94,6 +94,16 @@ export const SERVICES: ServiceDefinition[] = [
     hasCostApi: false,
     notes: 'Project ref: iuqkxkaijlejkmluqvvv',
   },
+  {
+    id: 'supabase-zwaluwflow',
+    name: 'Supabase (ZwaluwFlow)',
+    category: 'database',
+    provider: 'Supabase',
+    iconSlug: 'supabase',
+    docsUrl: 'https://supabase.com/docs',
+    hasCostApi: false,
+    notes: 'Project ref: dpmxvpbvqhsdcbtwyoyw',
+  },
   // Hosting
   {
     id: 'vercel',
@@ -278,6 +288,9 @@ export const SERVICE_CONNECTIONS: ServiceConnection[] = [
   { serviceId: 'supabase-zwaluwplanner', projectId: 'zwaluwplanner', envKeys: ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'] },
   { serviceId: 'lovable', projectId: 'zwaluwplanner', envKeys: [] },
   { serviceId: 'github', projectId: 'zwaluwplanner', envKeys: [] },
+  // ZwaluwFlow
+  { serviceId: 'supabase-zwaluwflow', projectId: 'zwaluwflow', envKeys: ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'] },
+  { serviceId: 'github', projectId: 'zwaluwflow', envKeys: [] },
   // Dashboard
   { serviceId: 'supabase-dashboard', projectId: 'zwaluw-dashboard', envKeys: ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'] },
   { serviceId: 'vercel', projectId: 'zwaluw-dashboard', envKeys: ['VERCEL_TOKEN', 'VERCEL_TEAM_ID'] },
@@ -301,6 +314,8 @@ export const INFRA_EDGES: InfraEdge[] = [
   { fromId: 'callflow',        fromType: 'project', toId: 'supabase-callflow',     toType: 'service', edgeType: 'reads' },
   { fromId: 'zwaluwplanner',   fromType: 'project', toId: 'supabase-zwaluwplanner',toType: 'service', edgeType: 'writes' },
   { fromId: 'zwaluwplanner',   fromType: 'project', toId: 'supabase-zwaluwplanner',toType: 'service', edgeType: 'reads' },
+  { fromId: 'zwaluwflow',      fromType: 'project', toId: 'supabase-zwaluwflow',  toType: 'service', edgeType: 'writes' },
+  { fromId: 'zwaluwflow',      fromType: 'project', toId: 'supabase-zwaluwflow',  toType: 'service', edgeType: 'reads' },
   { fromId: 'zwaluw-dashboard',fromType: 'project', toId: 'supabase-dashboard',   toType: 'service', edgeType: 'writes' },
   { fromId: 'zwaluw-dashboard',fromType: 'project', toId: 'supabase-dashboard',   toType: 'service', edgeType: 'reads' },
 

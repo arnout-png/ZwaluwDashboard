@@ -112,7 +112,7 @@ export default async function DashboardPage() {
           <div>
             <h1 className="text-2xl font-bold text-white">Zwaluw Dashboard</h1>
             <p className="mt-0.5 text-sm text-zinc-500">
-              Portfolio analytics · 7 projecten
+              Portfolio analytics · {PROJECTS.length} projecten
               {lastSync && (
                 <> · gesynchroniseerd {new Date(lastSync).toLocaleDateString('nl-NL')}</>
               )}

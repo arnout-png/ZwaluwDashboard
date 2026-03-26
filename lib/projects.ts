@@ -56,6 +56,17 @@ export const PROJECTS: Project[] = [
     color: '#f59e0b',
   },
   {
+    id: 'zwaluwflow',
+    name: 'ZwaluwFlow',
+    description: 'Badkamer-planningtool voor klanten (offerte, planning, materialen)',
+    githubOwner: 'arnout-png',
+    githubRepo: 'zwaluwflow-bath-planning',
+    vercelProjectId: null,
+    supabaseRef: 'dpmxvpbvqhsdcbtwyoyw',
+    techStack: ['Vite', 'React', 'Supabase', 'shadcn/ui', 'TanStack Query'],
+    color: '#f97316',
+  },
+  {
     id: 'leadflow',
     name: 'LeadFlow',
     description: 'Lead managementsysteem (gepland)',
