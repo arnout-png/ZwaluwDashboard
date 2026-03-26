@@ -1,5 +1,3 @@
-import { RefreshCw } from 'lucide-react'
-import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase'
 import { PROJECTS } from '@/lib/projects'
 import { KPIBar } from '@/components/dashboard/KPIBar'
@@ -8,6 +6,7 @@ import { CommitChart } from '@/components/dashboard/CommitChart'
 import { LOCChart } from '@/components/dashboard/LOCChart'
 import { PortfolioSummary } from '@/components/dashboard/PortfolioSummary'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
+import { SyncButton } from '@/components/dashboard/SyncButton'
 
 // Force dynamic rendering — Supabase reads happen at request time
 export const dynamic = 'force-dynamic'
@@ -119,13 +118,7 @@ export default async function DashboardPage() {
               )}
             </p>
           </div>
-          <Link
-            href="/api/sync"
-            className="flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm text-zinc-300 transition-colors hover:bg-zinc-700"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Sync
-          </Link>
+          <SyncButton />
         </div>
 
         {/* KPI bar */}
