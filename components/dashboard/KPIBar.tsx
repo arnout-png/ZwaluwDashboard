@@ -1,4 +1,5 @@
-import { GitCommitHorizontal, Rocket, FolderGit2, Star } from 'lucide-react'
+import { GitCommitHorizontal, Rocket, FolderGit2, Gauge, CircleDollarSign, Activity } from 'lucide-react'
+import { PROJECTS } from '@/lib/projects'
 
 type KPI = {
   label: string
@@ -11,12 +12,14 @@ export function KPIBar({
   totalCommits,
   activeProjects,
   totalDeployments,
-  avgMaturity,
+  avgQuality,
+  totalCostEur,
 }: {
   totalCommits: number
   activeProjects: number
   totalDeployments: number
-  avgMaturity: number
+  avgQuality: number
+  totalCostEur: number | null
 }) {
   const kpis: KPI[] = [
     {
@@ -28,7 +31,7 @@ export function KPIBar({
     {
       label: 'Actieve projecten',
       value: activeProjects,
-      sub: `van de 7`,
+      sub: `van de ${PROJECTS.length}`,
       icon: <FolderGit2 className="h-5 w-5 text-emerald-400" />,
     },
     {
@@ -38,15 +41,25 @@ export function KPIBar({
       icon: <Rocket className="h-5 w-5 text-purple-400" />,
     },
     {
-      label: 'Gem. volwassenheid',
-      value: `${avgMaturity.toFixed(1)} / 5`,
+      label: 'Gem. kwaliteit',
+      value: `${avgQuality}/100`,
       sub: 'portfolio-score',
-      icon: <Star className="h-5 w-5 text-amber-400" />,
+      icon: <Gauge className="h-5 w-5 text-cyan-400" />,
     },
+    ...(totalCostEur !== null
+      ? [
+          {
+            label: 'Kosten (maand)',
+            value: `€${Math.round(totalCostEur)}`,
+            sub: 'geschat',
+            icon: <CircleDollarSign className="h-5 w-5 text-amber-400" />,
+          },
+        ]
+      : []),
   ]
 
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
       {kpis.map((kpi) => (
         <div
           key={kpi.label}

@@ -5,9 +5,36 @@ export type Project = {
   githubOwner: string
   githubRepo: string
   vercelProjectId: string | null
+  vercelSlug: string | null
   supabaseRef: string | null
   techStack: string[]
   color: string
+}
+
+export type ProjectLinks = {
+  github: string
+  githubIssues: string
+  githubPRs: string
+  vercel: string | null
+  supabase: string | null
+  supabaseSQL: string | null
+}
+
+export function getProjectLinks(project: Project): ProjectLinks {
+  return {
+    github: `https://github.com/${project.githubOwner}/${project.githubRepo}`,
+    githubIssues: `https://github.com/${project.githubOwner}/${project.githubRepo}/issues`,
+    githubPRs: `https://github.com/${project.githubOwner}/${project.githubRepo}/pulls`,
+    vercel: project.vercelSlug
+      ? `https://vercel.com/veiligdouchen/${project.vercelSlug}`
+      : null,
+    supabase: project.supabaseRef
+      ? `https://supabase.com/dashboard/project/${project.supabaseRef}`
+      : null,
+    supabaseSQL: project.supabaseRef
+      ? `https://supabase.com/dashboard/project/${project.supabaseRef}/sql`
+      : null,
+  }
 }
 
 export const PROJECTS: Project[] = [
@@ -18,6 +45,7 @@ export const PROJECTS: Project[] = [
     githubOwner: 'arnout-png',
     githubRepo: 'SwiftFlow',
     vercelProjectId: 'swiftflow',
+    vercelSlug: 'swiftflow',
     supabaseRef: null, // meerdere Supabase projecten per niche
     techStack: ['Next.js 15', 'Turborepo', 'pnpm', 'Supabase'],
     color: '#3b82f6',
@@ -29,6 +57,7 @@ export const PROJECTS: Project[] = [
     githubOwner: 'arnout-png',
     githubRepo: 'ZwaluwNest',
     vercelProjectId: 'zwaluw-portal',
+    vercelSlug: 'zwaluw-portal',
     supabaseRef: 'oygbjxzpwnuyxgycofil',
     techStack: ['Next.js 16', 'Prisma 7', 'NextAuth v5', 'Tailwind v4'],
     color: '#8b5cf6',
@@ -40,6 +69,7 @@ export const PROJECTS: Project[] = [
     githubOwner: 'arnout-png',
     githubRepo: 'CallFlow',
     vercelProjectId: 'prj_JA0x4l5RazoXbvMFOmyVbCgc5MLr',
+    vercelSlug: 'callflow-zwaluw',
     supabaseRef: 'omynoptrdgqwhlotbhzf',
     techStack: ['Next.js 16', 'Supabase', 'Twilio'],
     color: '#10b981',
@@ -51,6 +81,7 @@ export const PROJECTS: Project[] = [
     githubOwner: 'arnout-png',
     githubRepo: 'Zwaluwplanner',
     vercelProjectId: 'zwaluwplanner',
+    vercelSlug: 'zwaluwplanner',
     supabaseRef: 'vsebuetvbdfsqidrhtcn',
     techStack: ['Vite', 'React', 'Supabase', 'shadcn/ui'],
     color: '#f59e0b',
@@ -62,6 +93,7 @@ export const PROJECTS: Project[] = [
     githubOwner: 'arnout-png',
     githubRepo: 'zwaluwflow-bath-planning',
     vercelProjectId: null,
+    vercelSlug: null,
     supabaseRef: 'dpmxvpbvqhsdcbtwyoyw',
     techStack: ['Vite', 'React', 'Supabase', 'shadcn/ui', 'TanStack Query'],
     color: '#f97316',
@@ -73,6 +105,7 @@ export const PROJECTS: Project[] = [
     githubOwner: 'arnout-png',
     githubRepo: 'LeadFlow',
     vercelProjectId: null,
+    vercelSlug: null,
     supabaseRef: null,
     techStack: [],
     color: '#ef4444',
@@ -84,6 +117,7 @@ export const PROJECTS: Project[] = [
     githubOwner: 'arnout-png',
     githubRepo: 'ZwaluwDashboard',
     vercelProjectId: 'prj_nAzx7pQI2ndwAsUEzT3mggXuWIUU',
+    vercelSlug: 'zwaluw-dashboard',
     supabaseRef: 'iuqkxkaijlejkmluqvvv',
     techStack: ['Next.js 16', 'Supabase', 'Claude Haiku', 'Recharts'],
     color: '#06b6d4',

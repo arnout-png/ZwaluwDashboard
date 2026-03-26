@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ExternalLink, Sparkles, Gauge } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Sparkles, Gauge, GitBranch, Triangle, Database, Globe } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase'
-import { PROJECTS } from '@/lib/projects'
+import { PROJECTS, getProjectLinks } from '@/lib/projects'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { CommitChart } from '@/components/dashboard/CommitChart'
@@ -40,18 +40,24 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString()
 
+  const links = getProjectLinks(project)
+
   const db = getSupabase()
   const [
     { data: commits },
     { data: deployments },
     { data: languages },
     { data: summary },
+    { data: domains },
   ] = await Promise.all([
     db.from('commits').select('sha, message, author_name, committed_at').eq('project_id', id).gte('committed_at', thirtyDaysAgo).order('committed_at', { ascending: false }),
     db.from('deployments').select('deployment_id, url, state, deployed_at').eq('project_id', id).order('deployed_at', { ascending: false }).limit(10),
     db.from('language_stats').select('language, bytes').eq('project_id', id).order('bytes', { ascending: false }),
     db.from('ai_summaries').select('*').eq('project_id', id).maybeSingle(),
+    db.from('vercel_domains').select('domain, is_production').eq('project_id', id).eq('is_production', true).limit(1),
   ])
+
+  const liveUrl = (domains ?? [])[0]?.domain ? `https://${(domains ?? [])[0].domain}` : null
 
   const dailyData = buildDailyData(commits ?? [])
   const totalBytes = (languages ?? []).reduce((s: number, l: any) => s + l.bytes, 0)
@@ -98,6 +104,28 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               <Badge key={t} variant="secondary">{t}</Badge>
             ))}
           </div>
+        </div>
+
+        {/* Platform links */}
+        <div className="flex flex-wrap gap-2">
+          <a href={links.github} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-400 transition-colors hover:border-zinc-600 hover:text-white">
+            <GitBranch className="h-4 w-4" /> GitHub
+          </a>
+          {links.vercel && (
+            <a href={links.vercel} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-400 transition-colors hover:border-zinc-600 hover:text-white">
+              <Triangle className="h-4 w-4" /> Vercel
+            </a>
+          )}
+          {links.supabase && (
+            <a href={links.supabase} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-400 transition-colors hover:border-zinc-600 hover:text-white">
+              <Database className="h-4 w-4" /> Supabase
+            </a>
+          )}
+          {liveUrl && (
+            <a href={liveUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-cyan-800/50 bg-cyan-950/30 px-3 py-2 text-sm text-cyan-400 transition-colors hover:border-cyan-600 hover:text-cyan-300">
+              <Globe className="h-4 w-4" /> Live
+            </a>
+          )}
         </div>
 
         {/* Stats row */}
