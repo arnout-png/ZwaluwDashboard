@@ -5,6 +5,7 @@ export type Project = {
   githubOwner: string
   githubRepo: string
   vercelProjectId: string | null
+  supabaseRef: string | null
   techStack: string[]
   color: string
 }
@@ -17,6 +18,7 @@ export const PROJECTS: Project[] = [
     githubOwner: 'arnout-png',
     githubRepo: 'SwiftFlow',
     vercelProjectId: 'swiftflow',
+    supabaseRef: null, // meerdere Supabase projecten per niche
     techStack: ['Next.js 15', 'Turborepo', 'pnpm', 'Supabase'],
     color: '#3b82f6',
   },
@@ -27,6 +29,7 @@ export const PROJECTS: Project[] = [
     githubOwner: 'arnout-png',
     githubRepo: 'ZwaluwNest',
     vercelProjectId: 'zwaluw-portal',
+    supabaseRef: 'oygbjxzpwnuyxgycofil',
     techStack: ['Next.js 16', 'Prisma 7', 'NextAuth v5', 'Tailwind v4'],
     color: '#8b5cf6',
   },
@@ -36,7 +39,8 @@ export const PROJECTS: Project[] = [
     description: 'Callcenter-app met Twilio softphone',
     githubOwner: 'arnout-png',
     githubRepo: 'CallFlow',
-    vercelProjectId: 'callflow',
+    vercelProjectId: 'prj_JA0x4l5RazoXbvMFOmyVbCgc5MLr',
+    supabaseRef: 'omynoptrdgqwhlotbhzf',
     techStack: ['Next.js 16', 'Supabase', 'Twilio'],
     color: '#10b981',
   },
@@ -47,7 +51,8 @@ export const PROJECTS: Project[] = [
     githubOwner: 'arnout-png',
     githubRepo: 'Zwaluwplanner',
     vercelProjectId: 'zwaluwplanner',
-    techStack: ['Next.js'],
+    supabaseRef: 'vsebuetvbdfsqidrhtcn',
+    techStack: ['Vite', 'React', 'Supabase', 'shadcn/ui'],
     color: '#f59e0b',
   },
   {
@@ -57,17 +62,19 @@ export const PROJECTS: Project[] = [
     githubOwner: 'arnout-png',
     githubRepo: 'LeadFlow',
     vercelProjectId: null,
+    supabaseRef: null,
     techStack: [],
     color: '#ef4444',
   },
   {
     id: 'zwaluw-dashboard',
     name: 'ZwaluwDashboard',
-    description: 'Portfolio analytics dashboard voor alle Zwaluw-projecten',
+    description: 'Infrastructuur manager voor alle Zwaluw-projecten',
     githubOwner: 'arnout-png',
     githubRepo: 'ZwaluwDashboard',
-    vercelProjectId: 'zwaluw-dashboard',
-    techStack: ['Next.js 15', 'Supabase', 'Claude Haiku', 'Recharts'],
+    vercelProjectId: 'prj_nAzx7pQI2ndwAsUEzT3mggXuWIUU',
+    supabaseRef: 'iuqkxkaijlejkmluqvvv',
+    techStack: ['Next.js 16', 'Supabase', 'Claude Haiku', 'Recharts'],
     color: '#06b6d4',
   },
 ]

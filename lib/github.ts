@@ -60,3 +60,112 @@ export async function getRepoInfo(owner: string, repo: string) {
     return null
   }
 }
+
+export type GithubPR = {
+  number: number
+  title: string
+  state: 'open' | 'closed'
+  author: string
+  baseBranch: string
+  headBranch: string
+  createdAt: string
+  mergedAt: string | null
+  url: string
+}
+
+export type GithubIssue = {
+  number: number
+  title: string
+  state: 'open' | 'closed'
+  author: string
+  labels: string[]
+  createdAt: string
+  closedAt: string | null
+  url: string
+}
+
+export type GithubBranch = {
+  name: string
+  isDefault: boolean
+  lastCommitSha: string
+  lastCommitDate: string
+}
+
+export async function getPullRequests(
+  owner: string,
+  repo: string,
+  state: 'open' | 'all' = 'open'
+): Promise<GithubPR[]> {
+  try {
+    const url = `${GITHUB_API}/repos/${owner}/${repo}/pulls?state=${state}&per_page=50`
+    const res = await fetch(url, { headers: headers(), next: { revalidate: 3600 } })
+    if (!res.ok) return []
+    const data = await res.json()
+    if (!Array.isArray(data)) return []
+    return data.map((pr: any) => ({
+      number: pr.number as number,
+      title: pr.title as string ?? '',
+      state: pr.state as 'open' | 'closed',
+      author: pr.user?.login as string ?? 'unknown',
+      baseBranch: pr.base?.ref as string ?? '',
+      headBranch: pr.head?.ref as string ?? '',
+      createdAt: pr.created_at as string ?? '',
+      mergedAt: pr.merged_at as string | null ?? null,
+      url: pr.html_url as string ?? '',
+    }))
+  } catch {
+    return []
+  }
+}
+
+export async function getIssues(
+  owner: string,
+  repo: string,
+  state: 'open' | 'all' = 'open'
+): Promise<GithubIssue[]> {
+  try {
+    const url = `${GITHUB_API}/repos/${owner}/${repo}/issues?state=${state}&per_page=50`
+    const res = await fetch(url, { headers: headers(), next: { revalidate: 3600 } })
+    if (!res.ok) return []
+    const data = await res.json()
+    if (!Array.isArray(data)) return []
+    // GitHub issues endpoint also returns PRs — filter them out
+    return data
+      .filter((item: any) => !item.pull_request)
+      .map((issue: any) => ({
+        number: issue.number as number,
+        title: issue.title as string ?? '',
+        state: issue.state as 'open' | 'closed',
+        author: issue.user?.login as string ?? 'unknown',
+        labels: (issue.labels ?? []).map((l: any) => l.name as string),
+        createdAt: issue.created_at as string ?? '',
+        closedAt: issue.closed_at as string | null ?? null,
+        url: issue.html_url as string ?? '',
+      }))
+  } catch {
+    return []
+  }
+}
+
+export async function getBranches(owner: string, repo: string): Promise<GithubBranch[]> {
+  try {
+    const url = `${GITHUB_API}/repos/${owner}/${repo}/branches?per_page=100`
+    const res = await fetch(url, { headers: headers(), next: { revalidate: 3600 } })
+    if (!res.ok) return []
+    const data = await res.json()
+    if (!Array.isArray(data)) return []
+
+    // Also fetch default branch from repo info
+    const info = await getRepoInfo(owner, repo)
+    const defaultBranch = info?.default_branch ?? 'main'
+
+    return data.map((b: any) => ({
+      name: b.name as string,
+      isDefault: b.name === defaultBranch,
+      lastCommitSha: b.commit?.sha as string ?? '',
+      lastCommitDate: b.commit?.commit?.author?.date as string ?? '',
+    }))
+  } catch {
+    return []
+  }
+}
