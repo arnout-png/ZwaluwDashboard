@@ -49,18 +49,28 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     { data: languages },
     { data: summary },
     { data: domains },
+    { data: codeFreq },
   ] = await Promise.all([
     db.from('commits').select('sha, message, author_name, committed_at').eq('project_id', id).gte('committed_at', thirtyDaysAgo).order('committed_at', { ascending: false }),
     db.from('deployments').select('deployment_id, url, state, deployed_at').eq('project_id', id).order('deployed_at', { ascending: false }).limit(10),
     db.from('language_stats').select('language, bytes').eq('project_id', id).order('bytes', { ascending: false }),
     db.from('ai_summaries').select('*').eq('project_id', id).maybeSingle(),
     db.from('vercel_domains').select('domain, is_production').eq('project_id', id).eq('is_production', true).limit(1),
+    db.from('code_frequency').select('additions, deletions, week_start').eq('project_id', id).gte('week_start', thirtyDaysAgo.slice(0, 10)).order('week_start', { ascending: false }),
   ])
 
   const liveUrl = (domains ?? [])[0]?.domain ? `https://${(domains ?? [])[0].domain}` : null
 
   const dailyData = buildDailyData(commits ?? [])
   const totalBytes = (languages ?? []).reduce((s: number, l: any) => s + l.bytes, 0)
+
+  // Average commit size (lines changed per commit over last 30 days)
+  const totalChanges30d = (codeFreq ?? []).reduce(
+    (sum: number, w: any) => sum + (w.additions ?? 0) + (w.deletions ?? 0),
+    0
+  )
+  const commitCount = (commits ?? []).length
+  const avgCommitSize = commitCount > 0 ? Math.round(totalChanges30d / commitCount) : 0
 
   // Quality score
   const qualityResult = calculateQualityScore({
@@ -129,7 +139,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-center">
             <p className="text-2xl font-bold text-white">{(commits ?? []).length}</p>
             <p className="text-xs text-zinc-500">Commits (30d)</p>
@@ -143,6 +153,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               {totalBytes >= 1000 ? `~${Math.round(totalBytes / 50 / 1000)}k` : `~${Math.round(totalBytes / 50)}`}
             </p>
             <p className="text-xs text-zinc-500">Gesch. regels code</p>
+          </div>
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-center">
+            <p className="text-2xl font-bold text-white">
+              {avgCommitSize > 0 ? `~${avgCommitSize}` : '—'}
+            </p>
+            <p className="text-xs text-zinc-500">Gem. commit grootte</p>
           </div>
         </div>
 

@@ -39,6 +39,32 @@ export async function getCommits(
   }
 }
 
+export type WeeklyCodeFrequency = {
+  weekStart: string // ISO date string
+  additions: number
+  deletions: number
+}
+
+export async function getCodeFrequency(
+  owner: string,
+  repo: string
+): Promise<WeeklyCodeFrequency[]> {
+  try {
+    const url = `${GITHUB_API}/repos/${owner}/${repo}/stats/code_frequency`
+    const res = await fetch(url, { headers: headers(), next: { revalidate: 3600 } })
+    if (!res.ok) return []
+    const data = await res.json()
+    if (!Array.isArray(data)) return []
+    return data.map((row: [number, number, number]) => ({
+      weekStart: new Date(row[0] * 1000).toISOString().slice(0, 10),
+      additions: row[1],
+      deletions: Math.abs(row[2]),
+    }))
+  } catch {
+    return []
+  }
+}
+
 export async function getLanguages(owner: string, repo: string): Promise<Languages> {
   try {
     const url = `${GITHUB_API}/repos/${owner}/${repo}/languages`

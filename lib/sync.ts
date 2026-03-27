@@ -1,5 +1,5 @@
 import { PROJECTS } from './projects'
-import { getCommits, getLanguages, getPullRequests, getIssues, getBranches } from './github'
+import { getCommits, getLanguages, getCodeFrequency, getPullRequests, getIssues, getBranches } from './github'
 import { getDeployments, getProjectDomains } from './vercel-client'
 import { generateProjectSummary, generatePortfolioSummary } from './ai'
 import { getSupabaseAdmin } from './supabase'
@@ -50,9 +50,10 @@ export async function syncProject(projectId: string) {
 
   const since = new Date(Date.now() - THIRTY_DAYS_MS)
 
-  const [commits, languages, deployments, prs, issues, branches, domains] = await Promise.all([
+  const [commits, languages, codeFrequency, deployments, prs, issues, branches, domains] = await Promise.all([
     getCommits(project.githubOwner, project.githubRepo, since),
     getLanguages(project.githubOwner, project.githubRepo),
+    getCodeFrequency(project.githubOwner, project.githubRepo),
     project.vercelProjectId ? getDeployments(project.vercelProjectId) : Promise.resolve([]),
     getPullRequests(project.githubOwner, project.githubRepo, 'open'),
     getIssues(project.githubOwner, project.githubRepo, 'open'),
@@ -72,6 +73,20 @@ export async function syncProject(projectId: string) {
         committed_at: c.date,
       })),
       { onConflict: 'id' }
+    )
+  }
+
+  // Upsert code frequency (weekly additions/deletions)
+  if (codeFrequency.length > 0) {
+    await getSupabaseAdmin().from('code_frequency').upsert(
+      codeFrequency.map((w) => ({
+        project_id: project.id,
+        week_start: w.weekStart,
+        additions: w.additions,
+        deletions: w.deletions,
+        synced_at: new Date().toISOString(),
+      })),
+      { onConflict: 'project_id,week_start' }
     )
   }
 
