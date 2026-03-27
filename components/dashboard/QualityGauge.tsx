@@ -8,6 +8,7 @@ const GRADE_COLORS: Record<string, string> = {
   C: '#eab308',
   D: '#f97316',
   F: '#ef4444',
+  Gepland: '#71717a',
 }
 
 /** Radial gauge (180° arc) showing quality score 0–100 + letter grade */
@@ -18,8 +19,22 @@ export function QualityGauge({
   result: QualityResult
   size?: number
 }) {
-  const { score, grade, dimensions } = result
+  const { score, grade, planned } = result
   const color = GRADE_COLORS[grade] ?? '#71717a'
+
+  // Planned projects get a neutral display
+  if (planned) {
+    return (
+      <div className="flex flex-col items-center gap-4">
+        <div className="flex h-24 w-40 items-center justify-center">
+          <span className="text-2xl font-bold text-zinc-500">Gepland</span>
+        </div>
+        <div className="rounded-full bg-zinc-800 px-3 py-1">
+          <span className="text-sm text-zinc-500">Nog geen score</span>
+        </div>
+      </div>
+    )
+  }
 
   // SVG arc math — 180° semicircle
   const r = 54
@@ -121,6 +136,11 @@ export function QualityBreakdown({
 
 /** Compact inline score for cards — just the number + colored dot */
 export function QualityBadge({ result }: { result: QualityResult }) {
+  if (result.planned) {
+    return (
+      <span className="text-xs font-medium text-zinc-500">Gepland</span>
+    )
+  }
   const color = GRADE_COLORS[result.grade] ?? '#71717a'
   return (
     <div className="flex items-center gap-1.5">

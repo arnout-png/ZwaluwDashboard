@@ -4,6 +4,7 @@ const GRADE_COLORS: Record<string, string> = {
   C: '#eab308',
   D: '#f97316',
   F: '#ef4444',
+  Gepland: '#71717a',
 }
 
 const RANK_COLORS: Record<number, string> = {

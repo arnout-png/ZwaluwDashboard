@@ -1,11 +1,12 @@
 import { PROJECTS } from './projects'
-import { getCommits, getLanguages, getCodeFrequency, getPullRequests, getIssues, getBranches } from './github'
+import { getCommits, getLanguages, getCodeFrequency, getCommitDetails, getPullRequests, getIssues, getBranches } from './github'
 import { getDeployments, getProjectDomains } from './vercel-client'
-import { generateProjectSummary, generatePortfolioSummary } from './ai'
+import { generateProjectSummary, generatePortfolioSummary, generateCommitAnalysis } from './ai'
 import { getSupabaseAdmin } from './supabase'
 import { SERVICES, SERVICE_CONNECTIONS, INFRA_EDGES } from './services-registry'
 import { resolveAllCosts } from './costs'
 import { getSupabaseHealth, SUPABASE_REFS } from './supabase-mgmt'
+import { computeAllMetrics } from './metrics'
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
@@ -189,6 +190,50 @@ export async function syncProject(projectId: string) {
     )
   }
 
+  // Fetch commit details (additions/deletions) for top 20 recent commits
+  if (commits.length > 0) {
+    try {
+      const details = await getCommitDetails(
+        project.githubOwner,
+        project.githubRepo,
+        commits.slice(0, 20).map((c) => c.sha)
+      )
+      // Update commits with detail data
+      for (const d of details) {
+        await getSupabaseAdmin()
+          .from('commits')
+          .update({ files_changed: d.filesChanged, additions: d.additions, deletions: d.deletions })
+          .eq('id', `${project.id}-${d.sha}`)
+      }
+    } catch (err) {
+      console.warn('Commit details fetch failed:', err)
+    }
+  }
+
+  // Compute and store project metrics
+  const metrics = computeAllMetrics({
+    commits: commits.map((c) => ({ committed_at: c.date, author_name: c.author })),
+    codeFrequency: codeFrequency.map((w) => ({ weekStart: w.weekStart, additions: w.additions, deletions: w.deletions })),
+    deployments: deployments.map((d) => ({ state: d.state, build_duration_ms: d.buildDurationMs })),
+    days: 30,
+  })
+
+  await getSupabaseAdmin().from('project_metrics').upsert(
+    {
+      project_id: project.id,
+      metric_date: new Date().toISOString().slice(0, 10),
+      code_velocity_weekly: metrics.codeVelocityWeekly,
+      commit_consistency_score: metrics.commitConsistencyScore,
+      deploy_success_rate: metrics.deploySuccessRate,
+      avg_build_time_ms: metrics.avgBuildTimeMs,
+      active_contributors: metrics.activeContributors,
+      code_churn_rate: metrics.codeChurnRate,
+      avg_commit_size: metrics.avgCommitSize,
+      synced_at: new Date().toISOString(),
+    },
+    { onConflict: 'project_id,metric_date' }
+  )
+
   // Refresh AI summary if expired
   const { data: existing } = await getSupabaseAdmin()
     .from('ai_summaries')
@@ -216,6 +261,53 @@ export async function syncProject(projectId: string) {
           expires_at: new Date(Date.now() + SEVEN_DAYS_MS).toISOString(),
         },
         { onConflict: 'project_id' }
+      )
+    }
+  }
+
+  // Refresh AI commit analysis if expired
+  const { data: existingAnalysis } = await getSupabaseAdmin()
+    .from('ai_commit_analyses')
+    .select('expires_at')
+    .eq('project_id', project.id)
+    .maybeSingle()
+
+  const analysisExpired = !existingAnalysis || new Date(existingAnalysis.expires_at) < new Date()
+  if (analysisExpired && commits.length > 0) {
+    // Get commit details from DB for enriched analysis
+    const { data: enrichedCommits } = await getSupabaseAdmin()
+      .from('commits')
+      .select('message, additions, deletions, files_changed')
+      .eq('project_id', project.id)
+      .order('committed_at', { ascending: false })
+      .limit(30)
+
+    const analysis = await generateCommitAnalysis({
+      projectName: project.name,
+      commits: (enrichedCommits ?? []).map((c: any) => ({
+        message: c.message,
+        additions: c.additions ?? undefined,
+        deletions: c.deletions ?? undefined,
+        filesChanged: c.files_changed ?? undefined,
+      })),
+      period: 'afgelopen 30 dagen',
+    })
+
+    if (analysis) {
+      const periodStart = since.toISOString().slice(0, 10)
+      const periodEnd = new Date().toISOString().slice(0, 10)
+      await getSupabaseAdmin().from('ai_commit_analyses').upsert(
+        {
+          project_id: project.id,
+          period_start: periodStart,
+          period_end: periodEnd,
+          summary: analysis.summary,
+          key_changes: analysis.key_changes,
+          patterns: analysis.patterns,
+          generated_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + SEVEN_DAYS_MS).toISOString(),
+        },
+        { onConflict: 'project_id,period_start,period_end' }
       )
     }
   }

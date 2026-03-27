@@ -72,6 +72,68 @@ status: active | planning | maintenance | inactive`
   }
 }
 
+export type CommitAnalysis = {
+  summary: string
+  key_changes: Array<{ area: string; description: string; impact: 'high' | 'medium' | 'low' }>
+  patterns: string[]
+}
+
+export async function generateCommitAnalysis(params: {
+  projectName: string
+  commits: Array<{ message: string; additions?: number; deletions?: number; filesChanged?: number }>
+  period: string
+}): Promise<CommitAnalysis | null> {
+  if (params.commits.length === 0) return null
+
+  const commitList = params.commits
+    .slice(0, 30)
+    .map((c) => {
+      const stats = c.additions !== undefined ? ` (+${c.additions}/-${c.deletions}, ${c.filesChanged} files)` : ''
+      return `- ${c.message}${stats}`
+    })
+    .join('\n')
+
+  try {
+    const { text } = await generateText({
+      model: anthropic(MODEL),
+      prompt: `Je bent een technisch analist. Analyseer de recente commits van het project "${params.projectName}" (${params.period}).
+
+Commits:
+${commitList}
+
+Geef ALLEEN geldige JSON terug:
+{
+  "summary": "2-3 zinnen samenvatting van wat er veranderd is in het Nederlands",
+  "key_changes": [
+    {"area": "korte categorie", "description": "wat is veranderd", "impact": "high|medium|low"}
+  ],
+  "patterns": ["observatie over commit-patronen"]
+}
+
+Max 5 key_changes, max 3 patterns. Schrijf in het Nederlands.`,
+    })
+    const match = text.trim().match(/\{[\s\S]*\}/)
+    if (!match) return null
+    const parsed = JSON.parse(match[0])
+    return {
+      summary: String(parsed.summary ?? ''),
+      key_changes: Array.isArray(parsed.key_changes)
+        ? parsed.key_changes.slice(0, 5).map((c: any) => ({
+            area: String(c.area ?? ''),
+            description: String(c.description ?? ''),
+            impact: ['high', 'medium', 'low'].includes(c.impact) ? c.impact : 'medium',
+          }))
+        : [],
+      patterns: Array.isArray(parsed.patterns)
+        ? parsed.patterns.slice(0, 3).map(String)
+        : [],
+    }
+  } catch (err) {
+    console.error('Commit analysis failed:', err)
+    return null
+  }
+}
+
 export async function generatePortfolioSummary(
   projects: Array<{
     name: string

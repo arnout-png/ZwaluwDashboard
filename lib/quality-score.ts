@@ -24,7 +24,8 @@ export type QualityInput = {
 
 export type QualityResult = {
   score: number             // 0–100
-  grade: 'A' | 'B' | 'C' | 'D' | 'F'
+  grade: 'A' | 'B' | 'C' | 'D' | 'F' | 'Gepland'
+  planned?: boolean
   dimensions: {
     label: string
     score: number           // 0–100 per dimension
@@ -32,11 +33,38 @@ export type QualityResult = {
   }[]
 }
 
+/** Detect if a project is still in the planning phase (no activity, no infra) */
+export function isPlannedProject(input: QualityInput): boolean {
+  return (
+    input.commitCount30d === 0 &&
+    !input.hasVercel &&
+    input.techStackCount === 0 &&
+    (input.aiStatus === 'planned' || input.aiStatus === 'planning' || input.aiStatus === null)
+  )
+}
+
 function clamp(v: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, v))
 }
 
 export function calculateQualityScore(input: QualityInput): QualityResult {
+  // Planned projects get a neutral state instead of a score
+  if (isPlannedProject(input)) {
+    return {
+      score: 0,
+      grade: 'Gepland',
+      planned: true,
+      dimensions: [
+        { label: 'Commit-frequentie', score: 0, weight: 25 },
+        { label: 'Deploy-gezondheid', score: 0, weight: 20 },
+        { label: 'Code-volwassenheid', score: 0, weight: 20 },
+        { label: 'Infra-compleetheid', score: 0, weight: 15 },
+        { label: 'Code-diversiteit', score: 0, weight: 10 },
+        { label: 'Documentatie', score: 0, weight: 10 },
+      ],
+    }
+  }
+
   // 1. Commit frequency (25%)
   // 0 commits = 0, 5 = 30, 15 = 60, 30+ = 90, 60+ = 100
   const commitScore = clamp(

@@ -12,6 +12,8 @@ import { ActivityFeed } from '@/components/dashboard/ActivityFeed'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { SyncButton } from '@/components/dashboard/SyncButton'
 import { calculateQualityScore, type QualityResult } from '@/lib/quality-score'
+import { DateRangeSelector } from '@/components/dashboard/DateRangeSelector'
+import { parseDateRange } from '@/lib/date-utils'
 
 // Force dynamic rendering — Supabase reads happen at request time
 export const dynamic = 'force-dynamic'
@@ -19,10 +21,11 @@ export const dynamic = 'force-dynamic'
 // ─── helpers ───────────────────────────────────────────────────────────────
 
 function buildCommitsByDay(
-  commits: Array<{ project_id: string; committed_at: string }>
+  commits: Array<{ project_id: string; committed_at: string }>,
+  days: number = 30
 ): { byProject: Record<string, { date: string; count: number }[]>; chartData: Record<string, string | number>[] } {
-  const last30 = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date(Date.now() - (29 - i) * 86_400_000)
+  const last30 = Array.from({ length: days }, (_, i) => {
+    const d = new Date(Date.now() - (days - 1 - i) * 86_400_000)
     return d.toISOString().slice(0, 10)
   })
 
@@ -51,8 +54,10 @@ function buildCommitsByDay(
 
 // ─── page ──────────────────────────────────────────────────────────────────
 
-export default async function DashboardPage() {
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString()
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ range?: string }> }) {
+  const sp = await searchParams
+  const dateRange = parseDateRange(sp.range)
+  const sinceISO = dateRange.since.toISOString()
 
   const db = getSupabase()
   const [
@@ -66,7 +71,7 @@ export default async function DashboardPage() {
     { data: domains },
     { data: prs },
   ] = await Promise.all([
-    db.from('commits').select('project_id, sha, message, author_name, committed_at').gte('committed_at', thirtyDaysAgo).order('committed_at', { ascending: false }),
+    db.from('commits').select('project_id, sha, message, author_name, committed_at, additions, deletions, files_changed').gte('committed_at', sinceISO).order('committed_at', { ascending: false }),
     db.from('deployments').select('project_id, state, url, deployed_at').order('deployed_at', { ascending: false }),
     db.from('language_stats').select('project_id, language, bytes'),
     db.from('ai_summaries').select('*'),
@@ -77,7 +82,7 @@ export default async function DashboardPage() {
     db.from('github_prs').select('project_id, title, created_at, url').eq('state', 'open').order('created_at', { ascending: false }).limit(10),
   ])
 
-  const { byProject, chartData } = buildCommitsByDay(commits ?? [])
+  const { byProject, chartData } = buildCommitsByDay(commits ?? [], dateRange.days)
 
   // Latest deployment per project
   const latestDeploy: Record<string, { state: string; url: string; deployed_at: string }> = {}
@@ -110,7 +115,7 @@ export default async function DashboardPage() {
   ).length
   const totalDeployments = new Set(
     (deployments ?? [])
-      .filter((d) => new Date(d.deployed_at) > new Date(thirtyDaysAgo))
+      .filter((d) => new Date(d.deployed_at) > dateRange.since)
       .map((d) => d.project_id + d.deployed_at)
   ).size
 
@@ -135,9 +140,10 @@ export default async function DashboardPage() {
     })
   }
 
-  const avgQuality = Math.round(
-    Object.values(qualityScores).reduce((s, q) => s + q.score, 0) / PROJECTS.length
-  )
+  const scoredProjects = Object.values(qualityScores).filter((q) => !q.planned)
+  const avgQuality = scoredProjects.length > 0
+    ? Math.round(scoredProjects.reduce((s, q) => s + q.score, 0) / scoredProjects.length)
+    : 0
 
   // Cost data
   const totalCostEur = (costRows ?? []).reduce((s: number, c: any) => s + (c.amount_eur ?? 0), 0)
@@ -179,7 +185,7 @@ export default async function DashboardPage() {
       message: c.message,
       timestamp: c.committed_at,
     })),
-    ...(deployments ?? []).filter((d) => new Date(d.deployed_at) > new Date(thirtyDaysAgo)).slice(0, 20).map((d: any) => ({
+    ...(deployments ?? []).filter((d) => new Date(d.deployed_at) > dateRange.since).slice(0, 20).map((d: any) => ({
       type: 'deploy' as const,
       projectId: d.project_id,
       projectName: projectMap[d.project_id]?.name ?? d.project_id,
@@ -215,7 +221,10 @@ export default async function DashboardPage() {
               )}
             </p>
           </div>
-          <SyncButton />
+          <div className="flex items-center gap-3">
+            <DateRangeSelector />
+            <SyncButton />
+          </div>
         </div>
 
         {/* KPI bar */}
@@ -234,7 +243,7 @@ export default async function DashboardPage() {
         <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
           <Card>
             <CardHeader>
-              <CardTitle>Commit-frequentie — afgelopen 30 dagen</CardTitle>
+              <CardTitle>Commit-frequentie — afgelopen {dateRange.label}</CardTitle>
             </CardHeader>
             <CommitChart
               data={chartData}

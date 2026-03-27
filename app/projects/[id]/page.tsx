@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ExternalLink, Sparkles, Gauge, GitBranch, Triangle, Database, Globe } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Sparkles, Gauge, GitBranch, Triangle, Database, Globe, Activity } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase'
 import { PROJECTS, getProjectLinks } from '@/lib/projects'
 import { Badge } from '@/components/ui/badge'
@@ -9,6 +9,10 @@ import { CommitChart } from '@/components/dashboard/CommitChart'
 import { LOCChart } from '@/components/dashboard/LOCChart'
 import { calculateQualityScore } from '@/lib/quality-score'
 import { QualityGauge, QualityBreakdown } from '@/components/dashboard/QualityGauge'
+import { DateRangeSelector } from '@/components/dashboard/DateRangeSelector'
+import { MetricsGrid } from '@/components/dashboard/MetricsGrid'
+import { CommitAnalysis } from '@/components/dashboard/CommitAnalysis'
+import { parseDateRange } from '@/lib/date-utils'
 
 // Force dynamic rendering — Supabase reads happen at request time
 export const dynamic = 'force-dynamic'
@@ -20,9 +24,9 @@ function deploymentBadge(state: string) {
   return 'secondary' as const
 }
 
-function buildDailyData(commits: Array<{ committed_at: string }>) {
-  const last30 = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date(Date.now() - (29 - i) * 86_400_000)
+function buildDailyData(commits: Array<{ committed_at: string }>, days: number = 30) {
+  const last30 = Array.from({ length: days }, (_, i) => {
+    const d = new Date(Date.now() - (days - 1 - i) * 86_400_000)
     return d.toISOString().slice(0, 10)
   })
   const counts = Object.fromEntries(last30.map((d) => [d, 0]))
@@ -33,12 +37,14 @@ function buildDailyData(commits: Array<{ committed_at: string }>) {
   return last30.map((date) => ({ date, commits: counts[date] }))
 }
 
-export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProjectDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ range?: string }> }) {
   const { id } = await params
+  const sp = await searchParams
   const project = PROJECTS.find((p) => p.id === id)
   if (!project) notFound()
 
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString()
+  const dateRange = parseDateRange(sp.range)
+  const sinceISO = dateRange.since.toISOString()
 
   const links = getProjectLinks(project)
 
@@ -50,18 +56,22 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     { data: summary },
     { data: domains },
     { data: codeFreq },
+    { data: metricsRow },
+    { data: commitAnalysis },
   ] = await Promise.all([
-    db.from('commits').select('sha, message, author_name, committed_at').eq('project_id', id).gte('committed_at', thirtyDaysAgo).order('committed_at', { ascending: false }),
-    db.from('deployments').select('deployment_id, url, state, deployed_at').eq('project_id', id).order('deployed_at', { ascending: false }).limit(10),
+    db.from('commits').select('sha, message, author_name, committed_at, additions, deletions, files_changed').eq('project_id', id).gte('committed_at', sinceISO).order('committed_at', { ascending: false }),
+    db.from('deployments').select('deployment_id, url, state, deployed_at, build_duration_ms').eq('project_id', id).order('deployed_at', { ascending: false }).limit(20),
     db.from('language_stats').select('language, bytes').eq('project_id', id).order('bytes', { ascending: false }),
     db.from('ai_summaries').select('*').eq('project_id', id).maybeSingle(),
     db.from('vercel_domains').select('domain, is_production').eq('project_id', id).eq('is_production', true).limit(1),
-    db.from('code_frequency').select('additions, deletions, week_start').eq('project_id', id).gte('week_start', thirtyDaysAgo.slice(0, 10)).order('week_start', { ascending: false }),
+    db.from('code_frequency').select('additions, deletions, week_start').eq('project_id', id).gte('week_start', sinceISO.slice(0, 10)).order('week_start', { ascending: false }),
+    db.from('project_metrics').select('*').eq('project_id', id).order('metric_date', { ascending: false }).limit(1).maybeSingle(),
+    db.from('ai_commit_analyses').select('summary, key_changes, patterns').eq('project_id', id).order('generated_at', { ascending: false }).limit(1).maybeSingle(),
   ])
 
   const liveUrl = (domains ?? [])[0]?.domain ? `https://${(domains ?? [])[0].domain}` : null
 
-  const dailyData = buildDailyData(commits ?? [])
+  const dailyData = buildDailyData(commits ?? [], dateRange.days)
   const totalBytes = (languages ?? []).reduce((s: number, l: any) => s + l.bytes, 0)
 
   // Average commit size (lines changed per commit over last 30 days)
@@ -138,11 +148,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           )}
         </div>
 
+        {/* Date range selector */}
+        <DateRangeSelector />
+
         {/* Stats row */}
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-center">
             <p className="text-2xl font-bold text-white">{(commits ?? []).length}</p>
-            <p className="text-xs text-zinc-500">Commits (30d)</p>
+            <p className="text-xs text-zinc-500">Commits ({dateRange.key})</p>
           </div>
           <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-center">
             <p className="text-2xl font-bold text-white">{(deployments ?? []).length}</p>
@@ -156,7 +169,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </div>
           <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-center">
             <p className="text-2xl font-bold text-white">
-              {avgCommitSize > 0 ? `~${avgCommitSize}` : '—'}
+              {metricsRow?.avg_commit_size > 0 ? `~${Math.round(metricsRow.avg_commit_size)}` : avgCommitSize > 0 ? `~${avgCommitSize}` : '—'}
             </p>
             <p className="text-xs text-zinc-500">Gem. commit grootte</p>
           </div>
@@ -176,10 +189,48 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </div>
         </Card>
 
+        {/* Project Metrics */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4 text-cyan-400" />
+              <CardTitle>Project Metrics</CardTitle>
+            </div>
+          </CardHeader>
+          <div className="px-6 pb-6">
+            <MetricsGrid
+              metrics={metricsRow ? {
+                commitConsistencyScore: metricsRow.commit_consistency_score,
+                deploySuccessRate: metricsRow.deploy_success_rate,
+                avgBuildTimeMs: metricsRow.avg_build_time_ms,
+                activeContributors: metricsRow.active_contributors,
+                codeChurnRate: metricsRow.code_churn_rate,
+                avgCommitSize: metricsRow.avg_commit_size,
+              } : null}
+              color={project.color}
+            />
+          </div>
+        </Card>
+
+        {/* AI Commit Analysis */}
+        {commitAnalysis && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-amber-400" />
+                <CardTitle>Recente veranderingen</CardTitle>
+              </div>
+            </CardHeader>
+            <div className="px-6 pb-6">
+              <CommitAnalysis analysis={commitAnalysis} color={project.color} />
+            </div>
+          </Card>
+        )}
+
         {/* Commit chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Commits per dag — afgelopen 30 dagen</CardTitle>
+            <CardTitle>Commits per dag — afgelopen {dateRange.label}</CardTitle>
           </CardHeader>
           <CommitChart
             data={dailyData.map((d) => ({ date: d.date, [id]: d.commits }))}
@@ -330,9 +381,21 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                   <span className="mt-0.5 font-mono text-xs text-zinc-600">{c.sha.slice(0, 7)}</span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm text-zinc-300">{c.message}</p>
-                    <p className="text-xs text-zinc-600">
-                      {c.author_name} · {new Date(c.committed_at).toLocaleDateString('nl-NL')}
-                    </p>
+                    <div className="flex items-center gap-2 text-xs text-zinc-600">
+                      <span>{c.author_name}</span>
+                      <span>·</span>
+                      <span>{new Date(c.committed_at).toLocaleDateString('nl-NL')}</span>
+                      {c.additions != null && (
+                        <>
+                          <span>·</span>
+                          <span className="text-emerald-500">+{c.additions}</span>
+                          <span className="text-red-400">-{c.deletions}</span>
+                          {c.files_changed != null && (
+                            <span className="text-zinc-500">{c.files_changed} files</span>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

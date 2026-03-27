@@ -264,3 +264,6 @@ create policy "public read" on github_branches   for select using (true);
 create policy "public read" on vercel_domains    for select using (true);
 create policy "public read" on supabase_health   for select using (true);
 create policy "public read" on incidents         for select using (true);
+create policy "public read" on code_frequency    for select using (true);
+create policy "public read" on project_metrics   for select using (true);
+create policy "public read" on ai_commit_analyses for select using (true);

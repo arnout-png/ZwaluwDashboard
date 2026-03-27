@@ -195,3 +195,37 @@ export async function getBranches(owner: string, repo: string): Promise<GithubBr
     return []
   }
 }
+
+export type CommitDetail = {
+  sha: string
+  filesChanged: number
+  additions: number
+  deletions: number
+}
+
+/** Fetch commit details (files, additions, deletions) for a list of SHAs. Max 20 to respect rate limits. */
+export async function getCommitDetails(
+  owner: string,
+  repo: string,
+  shas: string[]
+): Promise<CommitDetail[]> {
+  const batch = shas.slice(0, 20)
+  const results = await Promise.allSettled(
+    batch.map(async (sha) => {
+      const url = `${GITHUB_API}/repos/${owner}/${repo}/commits/${sha}`
+      const res = await fetch(url, { headers: headers(), next: { revalidate: 86400 } })
+      if (!res.ok) return null
+      const data = await res.json()
+      return {
+        sha,
+        filesChanged: data.files?.length ?? 0,
+        additions: data.stats?.additions ?? 0,
+        deletions: data.stats?.deletions ?? 0,
+      }
+    })
+  )
+  return results
+    .filter((r): r is PromiseFulfilledResult<CommitDetail | null> => r.status === 'fulfilled')
+    .map((r) => r.value)
+    .filter((d): d is CommitDetail => d !== null)
+}
