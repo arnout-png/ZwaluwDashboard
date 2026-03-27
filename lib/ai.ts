@@ -1,7 +1,8 @@
 import { anthropic } from '@ai-sdk/anthropic'
 import { generateText } from 'ai'
 
-const MODEL = 'claude-haiku-4.5'
+// Full model ID required for @ai-sdk/anthropic v1.x
+const MODEL = 'claude-haiku-4-5-20251001'
 
 export type ProjectSummary = {
   goal: string
