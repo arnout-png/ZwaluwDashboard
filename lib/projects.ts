@@ -111,6 +111,18 @@ export const PROJECTS: Project[] = [
     color: '#ef4444',
   },
   {
+    id: 'zwaluw-sales',
+    name: 'ZwaluwSales',
+    description: 'Sales portal voor offertes, contracten en PDF-generatie',
+    githubOwner: 'arnout-png',
+    githubRepo: 'zwaluw-sales',
+    vercelProjectId: 'prj_VPWJayCk7p4VQaXyAauoqrevb6Km',
+    vercelSlug: 'zwaluw-sales',
+    supabaseRef: null, // eigen project, ref onbekend
+    techStack: ['Next.js', 'Supabase', 'Tailwind', 'React PDF'],
+    color: '#ec4899',
+  },
+  {
     id: 'zwaluw-dashboard',
     name: 'ZwaluwDashboard',
     description: 'Infrastructuur manager voor alle Zwaluw-projecten',

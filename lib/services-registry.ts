@@ -317,6 +317,9 @@ export const SERVICE_CONNECTIONS: ServiceConnection[] = [
   { serviceId: 'vercel', projectId: 'zwaluw-dashboard', envKeys: ['VERCEL_TOKEN', 'VERCEL_TEAM_ID'] },
   { serviceId: 'github', projectId: 'zwaluw-dashboard', envKeys: ['GITHUB_TOKEN'] },
   { serviceId: 'anthropic', projectId: 'zwaluw-dashboard', envKeys: ['ANTHROPIC_API_KEY'] },
+  // ZwaluwSales
+  { serviceId: 'vercel', projectId: 'zwaluw-sales', envKeys: [] },
+  { serviceId: 'github', projectId: 'zwaluw-sales', envKeys: [] },
 ]
 
 export const INFRA_EDGES: InfraEdge[] = [
@@ -325,6 +328,7 @@ export const INFRA_EDGES: InfraEdge[] = [
   { fromId: 'zwaluw-portal',   fromType: 'project', toId: 'vercel', toType: 'service', edgeType: 'deploys-to' },
   { fromId: 'callflow',        fromType: 'project', toId: 'vercel', toType: 'service', edgeType: 'deploys-to' },
   { fromId: 'zwaluw-dashboard',fromType: 'project', toId: 'vercel', toType: 'service', edgeType: 'deploys-to' },
+  { fromId: 'zwaluw-sales',   fromType: 'project', toId: 'vercel', toType: 'service', edgeType: 'deploys-to' },
 
   // Project → primary database (writes)
   { fromId: 'swiftflow',       fromType: 'project', toId: 'supabase-swiftflow',    toType: 'service', edgeType: 'writes' },
@@ -366,9 +370,11 @@ export const INFRA_EDGES: InfraEdge[] = [
   { fromId: 'swiftflow', fromType: 'project', toId: 'transip',        toType: 'service', edgeType: 'calls' },
   { fromId: 'swiftflow', fromType: 'project', toId: 'slack',          toType: 'service', edgeType: 'webhook' },
 
-  // Business logic flow: SwiftFlow → LeadFlow → CallFlow
-  { fromId: 'swiftflow', fromType: 'project', toId: 'leadflow', toType: 'project', edgeType: 'writes', label: 'genereert leads' },
-  { fromId: 'leadflow',  fromType: 'project', toId: 'callflow', toType: 'project', edgeType: 'reads',  label: 'belt leads op' },
+  // Business logic flow: SwiftFlow → LeadFlow → CallFlow → ZwaluwSales
+  { fromId: 'swiftflow',    fromType: 'project', toId: 'leadflow',      toType: 'project', edgeType: 'writes', label: 'genereert leads' },
+  { fromId: 'leadflow',     fromType: 'project', toId: 'callflow',      toType: 'project', edgeType: 'reads',  label: 'belt leads op' },
+  { fromId: 'callflow',     fromType: 'project', toId: 'zwaluw-sales',  toType: 'project', edgeType: 'writes', label: 'maakt offerte' },
+  { fromId: 'zwaluw-sales', fromType: 'project', toId: 'zwaluwplanner', toType: 'project', edgeType: 'reads',  label: 'plant afspraak' },
 
   // Dashboard reads GitHub + Vercel
   { fromId: 'zwaluw-dashboard', fromType: 'project', toId: 'github', toType: 'service', edgeType: 'reads' },
