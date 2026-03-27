@@ -12,6 +12,7 @@ import { QualityGauge, QualityBreakdown } from '@/components/dashboard/QualityGa
 import { DateRangeSelector } from '@/components/dashboard/DateRangeSelector'
 import { MetricsGrid } from '@/components/dashboard/MetricsGrid'
 import { CommitAnalysis } from '@/components/dashboard/CommitAnalysis'
+import { CollapsibleSummary } from '@/components/dashboard/CollapsibleSummary'
 import { parseDateRange } from '@/lib/date-utils'
 
 // Force dynamic rendering — Supabase reads happen at request time
@@ -147,6 +148,13 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
             </a>
           )}
         </div>
+
+        {/* Collapsible AI summary */}
+        <CollapsibleSummary
+          summary={summary}
+          commitAnalysis={commitAnalysis}
+          color={project.color}
+        />
 
         {/* Date range selector */}
         <DateRangeSelector />
@@ -309,60 +317,6 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
             )}
           </Card>
         </div>
-
-        {/* AI summary */}
-        {summary && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-amber-400" />
-                <CardTitle>AI-projectanalyse</CardTitle>
-                <Badge
-                  variant={
-                    summary.status === 'active'
-                      ? 'success'
-                      : summary.status === 'maintenance'
-                      ? 'warning'
-                      : summary.status === 'inactive'
-                      ? 'error'
-                      : 'secondary'
-                  }
-                  className="ml-auto"
-                >
-                  {summary.status}
-                </Badge>
-              </div>
-            </CardHeader>
-            <div className="space-y-4">
-              <div>
-                <p className="mb-1 text-xs font-medium uppercase tracking-wider text-zinc-500">Doel</p>
-                <p className="text-sm text-zinc-300">{summary.goal}</p>
-              </div>
-              <div>
-                <p className="mb-1 text-xs font-medium uppercase tracking-wider text-zinc-500">Bedrijfswaarde</p>
-                <p className="text-sm text-zinc-300">{summary.business_value}</p>
-              </div>
-              <div>
-                <p className="mb-1 text-xs font-medium uppercase tracking-wider text-zinc-500">Inzicht</p>
-                <p className="text-sm text-zinc-300">{summary.key_insight}</p>
-              </div>
-              <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
-                  Volwassenheid ({summary.maturity}/5)
-                </p>
-                <div className="flex gap-1.5">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div
-                      key={i}
-                      className={`h-2 flex-1 rounded-full ${i <= summary.maturity ? '' : 'bg-zinc-700'}`}
-                      style={i <= summary.maturity ? { backgroundColor: project.color } : undefined}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Card>
-        )}
 
         {/* Recent commits */}
         <Card>

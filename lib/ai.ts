@@ -66,8 +66,8 @@ status: active | planning | maintenance | inactive`
       status: validStatuses.includes(parsed.status) ? parsed.status : 'planning',
       key_insight: String(parsed.key_insight ?? ''),
     }
-  } catch (err) {
-    console.error('Project summary failed:', err)
+  } catch (err: any) {
+    console.error('Project summary failed:', err?.message ?? err, err?.cause ?? '')
     return null
   }
 }
