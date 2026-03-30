@@ -131,7 +131,7 @@ export const PROJECTS: Project[] = [
     vercelProjectId: null,
     vercelSlug: null,
     supabaseRef: null,
-    techStack: [],
+    techStack: ['Vite', 'React', 'Supabase', 'shadcn/ui', 'TanStack Query'],
     color: '#a855f7',
   },
   {
