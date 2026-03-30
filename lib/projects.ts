@@ -123,6 +123,18 @@ export const PROJECTS: Project[] = [
     color: '#ec4899',
   },
   {
+    id: 'bundle-builder',
+    name: 'BundleBuilder',
+    description: 'Bundel-samensteller voor badkamerproducten',
+    githubOwner: 'arnout-png',
+    githubRepo: 'bundle-builder',
+    vercelProjectId: null,
+    vercelSlug: null,
+    supabaseRef: null,
+    techStack: [],
+    color: '#a855f7',
+  },
+  {
     id: 'zwaluw-dashboard',
     name: 'ZwaluwDashboard',
     description: 'Infrastructuur manager voor alle Zwaluw-projecten',
