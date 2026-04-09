@@ -135,6 +135,18 @@ export const PROJECTS: Project[] = [
     color: '#a855f7',
   },
   {
+    id: 'zwaluw-sites',
+    name: 'ZwaluwSites',
+    description: 'Next.js 14 monorepo — veiligdouchen.nl, zwaluwcomfortsanitair.nl, veiligdouchen.be',
+    githubOwner: 'PascalCasander',
+    githubRepo: 'zwaluw-sites',
+    vercelProjectId: null,
+    vercelSlug: null,
+    supabaseRef: null,
+    techStack: ['Next.js 14', 'Supabase', 'Tailwind'],
+    color: '#14b8a6',
+  },
+  {
     id: 'zwaluw-dashboard',
     name: 'ZwaluwDashboard',
     description: 'Infrastructuur manager voor alle Zwaluw-projecten',
